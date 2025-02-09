@@ -26,15 +26,42 @@ ssd1306_t display; // inicializa o objeto do display OLED
 
 
 // variaveis para os leds
-/*
+//configuração do programa de JOYSTICK_LED ---- PWM
 const float DIVIDER_PWM = 16.0;          // Divisor fracional do clock para o PWM
 const uint16_t PERIOD = 4096;            // Período do PWM (valor máximo do contador)
 uint16_t led_b_level, led_r_level = 100; // Inicialização dos níveis de PWM para os LEDs
 uint slice_led_b, slice_led_r;           // Variáveis para armazenar os slices de PWM correspondentes aos LEDs
-*/
+
+void setup_pwm_led(uint led, uint *slice, uint16_t level)
+{
+  gpio_set_function(led, GPIO_FUNC_PWM); // Configura o pino do LED como saída PWM
+  *slice = pwm_gpio_to_slice_num(led);   // Obtém o slice do PWM associado ao pino do LED
+  pwm_set_clkdiv(*slice, DIVIDER_PWM);   // Define o divisor de clock do PWM
+  pwm_set_wrap(*slice, PERIOD);          // Configura o valor máximo do contador (período do PWM)
+  pwm_set_gpio_level(led, level);        // Define o nível inicial do PWM para o LED
+  pwm_set_enabled(*slice, true);         // Habilita o PWM no slice correspondente ao LED
+}
+
+//////////////////////////////////////////////
+void joystick_read_axis(uint16_t *vrx_value, uint16_t *vry_value)
+{
+    // Reading the X-axis value of the joystick
+    adc_select_input(ADC_CHANNEL_0); // Selects the ADC channel for the X-axis
+    sleep_us(2);                     // Small delay for stability
+    *vrx_value = adc_read();         // Reads the X-axis value (0-4095)
+
+    // Reading the Y-axis value of the joystick
+    adc_select_input(ADC_CHANNEL_1); // Selects the ADC channel for the Y-axis
+    sleep_us(2);                     // Small delay for stability
+    *vry_value = adc_read();         // Reads the Y-axis value (0-4095)
+}
+
 
 void inicializacao(){
     stdio_init_all();
+    setup_pwm_led(LED_B, &slice_led_b, led_b_level); // Configura o PWM para o LED azul
+    setup_pwm_led(LED_R, &slice_led_r, led_r_level); // Configura o PWM para o LED vermelho
+
 
     // Inicializa o ADC e os pinos de entrada analógica
     adc_init();         // Inicializa o módulo ADC
@@ -65,9 +92,6 @@ void inicializacao(){
     gpio_set_function(LED_R, GPIO_OUT); // Configura o pino do LED vermelho como saida
     gpio_set_function(LED_G, GPIO_OUT); // Configura o pino do LED verde como saida
 
-    gpio_put(LED_B, 0); // inicializa desligado
-    gpio_put(LED_R, 0); //  inicializa desligado
-    gpio_put(LED_G, 0); //  inicializa desligado
 
 }
 void print_texto(char *msg, uint pos_x, uint pos_y, uint scale){ //mensagem, posicao x, posicao y, escala
@@ -91,10 +115,67 @@ void print_menu(uint posy){
 
 }
 
+void joystick_led(uint16_t vrx_value, uint16_t vry_value, uint16_t sw_value){
+    while (true){
+    joystick_read_axis(&vrx_value, &vry_value); // Lê os valores dos eixos do joystick
+    // Ajusta os níveis PWM dos LEDs de acordo com os valores do joystick
+    pwm_set_gpio_level(LED_B, vrx_value); // Ajusta o brilho do LED azul com o valor do eixo X
+    pwm_set_gpio_level(LED_R, vry_value); // Ajusta o brilho do LED vermelho com o valor do eixo Y
+
+    // Pequeno delay antes da próxima leitura
+    sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
+
+    if(gpio_get(SW) == 0){ // Verifica se o botão do joystick foi pressionado
+        
+        break; // Sai do loop
+    }
+    sleep_ms(100); // Espera 100 ms antes de repetir o ciclo
+  }
+  
+}
+
+
+
+
+
+// Função para ler os valores dos eixos do joystick (X e Y)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/********************************************************** */
+
+
+
+
+
+
+
+
+
 
 int main(){
     printf("Iniciando...\n");
     inicializacao();
+    uint16_t vrx_value, vry_value, sw_value; // Variáveis para armazenar os valores do joystick (eixos X e Y) e botão
+
+
     char *text = "";
     uint countDown = 0;
     uint countUp = 2;
@@ -103,10 +184,10 @@ int main(){
 
     print_menu(pos_y);
 
-    
-
-
-    gpio_put(LED_R, 0); 
+  /*  
+    gpio_put(LED_B, 0);
+    gpio_put(LED_G, 0);
+    gpio_put(LED_R, 0); */
     /******************************************************* */
     // trecho aproveitado do codigo do Joystick.c
     while (true) {
@@ -139,26 +220,18 @@ int main(){
        // pos_y_anterior = pos_y;
     }
 
-    if(gpio_get(SW) == 0){
-      if(menu == 1){
-            gpio_put(LED_R, 1);
-            sleep_ms(500);
-            gpio_put(LED_R, 0);
+  if(gpio_get(SW) == 0){
+      if(pos_y == 14){
+            joystick_led(vrx_value, vry_value, sw_value);
         }
-        else if(menu == 2){
-            gpio_put(LED_G, 1);
-            sleep_ms(500);
-            gpio_put(LED_G, 0);
+        else if(pos_y == 26){
+           
         }
-        else if(menu == 3){
-            gpio_put(LED_B, 1);
-            sleep_ms(500);
-            gpio_put(LED_B, 0);
+        else if(pos_y == 38){
+            
         }
         else{
-            gpio_put(LED_R, 0);
-            gpio_put(LED_G, 0);
-            gpio_put(LED_B, 0);
+            
         }
     }
     sleep_ms(100);
