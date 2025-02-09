@@ -274,9 +274,38 @@ void joystick_led_control() {
 
 
 
+// funcao para PWM LED -- programa 3
 
+void pwm_led() {
+    // Configuração inicial
+    uint16_t led_b_level = 100;
+    uint slice_led_g;
+    setup_pwm_led(LED_B, &slice_led_b, led_b_level);
+    
+    // Configura interrupção do botão
+    gpio_set_irq_enabled_with_callback(SW, GPIO_IRQ_EDGE_FALL, true, &button_callback);
 
-// Função para ler os valores dos eixos do joystick (X e Y)
+    printf("Controle PWM do LED ativado\n");
+    
+    // Loop principal com verificação de interrupção
+    while(!button_pressionado) {
+        // Aumenta o brilho do LED verde
+        led_b_level += 100;
+        if (led_b_level > PERIOD) {
+            led_b_level = 0;
+        }
+        pwm_set_gpio_level(LED_B, led_b_level);
+        
+        // Delay não-bloqueante
+        sleep_ms(50);
+    }
+    
+    // Cleanup ao sair
+    pwm_set_gpio_level(LED_B, 0);
+    button_pressionado = false;
+    printf("Retornando ao menu principal\n");
+
+}
 
 
 
@@ -362,10 +391,24 @@ int main(){
         button_pressionado = false;
         switch(menu) {
             case 1:
+            // limpando o display
+                ssd1306_clear(&display);
+                print_texto("PROGRAMA 1 ", 20, 18, 1.5);
+                print_texto("JOYSTICK LED", 20, 30, 1.5);
                 joystick_led_control();
                 break;
             case 2:
+                ssd1306_clear(&display);
+                print_texto("PROGRAMA 2 ", 20, 18, 1.5);
+                print_texto("BUZZER", 20, 30, 1.5);
                 play_star_wars(BUZZER_PIN);
+                break;
+
+            case 3:
+                ssd1306_clear(&display);
+                print_texto("PROGRAMA 3 ", 20, 18, 1.5);
+                print_texto("PWM LED", 20, 30, 1.5);
+                pwm_led();
                 break;
             default:
                 gpio_put(LED_B, 0);
